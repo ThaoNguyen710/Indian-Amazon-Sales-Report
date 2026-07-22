@@ -51,7 +51,7 @@ Maharashtra generated the highest total revenue, contributing nearly ₹13 milli
 The top five states represent the company’s strongest geographic markets and contribute a substantial portion of total revenue.
 This concentration means that changes in customer demand, inventory availability, or delivery performance in these states could have a meaningful effect on company-wide sales.
 
-### Recommendations
+#### Recommendations
 Prioritize inventory availability in the highest-revenue states.
 Allocate more advertising resources to markets with proven customer demand.
 Develop state-level customer retention campaigns.
@@ -63,7 +63,7 @@ Avoid becoming overly dependent on a small number of states by developing promis
 The Set category generated the most revenue in several of the highest-performing states.
 The category’s geographic consistency suggests that demand for Sets is not limited to one local market. It appears to be the company’s flagship category and an important driver of overall revenue.
 
-### Recommendations
+#### Recommendations
 Maintain sufficient inventory for popular Set products.
 Use Sets as the centerpiece of promotional campaigns.
 Expand the Set product line with additional designs, prices, and bundle options.
@@ -76,7 +76,7 @@ The highest-revenue states did not show unusually high return rates compared wit
 This suggests that stronger sales performance is not being achieved at the cost of substantially higher product returns. It may also indicate effective fulfillment, appropriate product quality, or good alignment between customer expectations and delivered products.
 However, the return-rate calculation only includes orders with statuses explicitly classified as returned or returning to the seller. Other cancellation or failed-delivery statuses should be analyzed separately.
 
-### Recommendations
+#### Recommendations
 Continue monitoring return rates in the most valuable states.
 Examine return reasons rather than relying only on the final order status.
 Compare return rates by state, category, product size, and fulfillment method.
@@ -90,7 +90,7 @@ Customers in these regions appear to spend more when they place an order, but th
 The high AOV results should therefore be interpreted carefully. A small number of expensive orders can significantly increase the average in low-volume states.
 To reduce this problem, the analysis includes only states with at least ten orders.
 
-### Recommendations
+#### Recommendations
 Maintain access to premium products in high-AOV states.
 Test targeted customer-acquisition campaigns before making major inventory investments.
 Use low-cost digital campaigns to determine whether the customer base can be expanded.
@@ -104,7 +104,7 @@ AOV increased sharply in early May and remained elevated during much of the mont
 During June, rolling AOV remained approximately between ₹653 and ₹668. Spending declined from the May peak but stabilized above much of the April level.
 The May increase could be connected to seasonal demand, promotions, larger shopping baskets, or changes in product mix. However, the trend alone does not prove which factor caused the increase.
 
-### Recommendations
+#### Recommendations
 Review promotions, campaigns, and product launches that occurred in May.
 Compare category sales shares across April, May, and June.
 Identify whether customers bought more items or more expensive products in May.
@@ -117,7 +117,7 @@ Saree had the highest average seven-day rolling AOV at approximately ₹933.27. 
 These categories consistently produced higher-value transactions and are likely important contributors to changes in overall AOV.
 Set also combined high AOV with substantial order volume and revenue, making it particularly important to the business.
 
-### Recommendations
+#### Recommendations
 Feature Sarees and Sets in premium marketing campaigns.
 Place these categories prominently on the homepage.
 Create personalized recommendations based on premium-category browsing.
@@ -131,7 +131,7 @@ This combination of high revenue, high order volume, and high AOV makes Set the 
 Kurta generated a similar number of orders but had a substantially lower AOV. This indicates that Kurta attracts customer demand but has opportunities for increasing basket value.
 Western Dress and Ethnic Dress produced premium purchasing behavior but had lower sales volumes.
 
-### Recommendations
+#### Recommendations
 Protect the Set category from stockouts.
 Expand successful Set designs and price points.
 Use product bundles and cross-selling to increase Kurta AOV.
@@ -146,7 +146,7 @@ Kurta: AOV increased from approximately ₹450.84 to ₹515.75, an increase of a
 Bottom: AOV increased from approximately ₹347.40 to ₹401.46, an increase of about 15.6%.
 Western Dress showed a smaller difference between promoted and non-promoted orders. This suggests that customers may be relatively willing to purchase Western Dresses without a discount.
 
-### Recommendations
+#### Recommendations
 Focus promotions on categories such as Kurta, Bottom, and Ethnic Dress, where the promotional AOV difference is larger.
 Use bundles or minimum-spend promotions to encourage larger orders.
 Use premium branding and targeted product discovery for Western Dress instead of frequent broad discounts.
