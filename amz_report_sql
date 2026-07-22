@@ -1,0 +1,532 @@
+# 1. TOP FIVE STATES BY TOTAL REVENUE
+ WITH state_revenue AS (
+    SELECT
+        ship_state,
+        SUM(amount) AS total_revenue
+    FROM amazon_sales.amz_report
+    WHERE ship_state IS NOT NULL
+      AND ship_state <> 'Unknown'
+    GROUP BY ship_state
+),
+ranked_states AS (
+    SELECT
+        ship_state,
+        total_revenue,
+        DENSE_RANK() OVER (
+            ORDER BY total_revenue DESC
+        ) AS revenue_rank
+    FROM state_revenue
+)
+
+SELECT
+    ship_state,
+    ROUND(total_revenue, 2) AS total_revenue,
+    revenue_rank
+FROM ranked_states
+WHERE revenue_rank <= 5
+ORDER BY revenue_rank, ship_state;
+
+# 2. HIGHEST-REVENUE CATEGORY IN EACH STATE
+WITH state_category_revenue AS (
+    SELECT
+        ship_state,
+        category,
+        SUM(amount) AS total_revenue
+    FROM amazon_sales.amz_report
+    WHERE ship_state IS NOT NULL
+      AND ship_state <> 'Unknown'
+    GROUP BY
+        ship_state,
+        category
+),
+ranked_categories AS (
+    SELECT
+        ship_state,
+        category,
+        total_revenue,
+        DENSE_RANK() OVER (
+            PARTITION BY ship_state
+            ORDER BY total_revenue DESC
+        ) AS category_rank
+    FROM state_category_revenue
+)
+
+SELECT
+    ship_state,
+    category,
+    ROUND(total_revenue, 2) AS total_revenue,
+    category_rank
+FROM ranked_categories
+WHERE category_rank = 1
+ORDER BY total_revenue DESC;
+
+#  3. CATEGORY DRIVING REVENUE IN EACH TOP-FIVE STATE
+WITH state_revenue AS (
+    SELECT
+        ship_state,
+        SUM(amount) AS state_total_revenue
+    FROM amazon_sales.amz_report
+    WHERE ship_state IS NOT NULL
+      AND ship_state <> 'Unknown'
+    GROUP BY ship_state
+),
+ranked_states AS (
+    SELECT
+        ship_state,
+        state_total_revenue,
+        DENSE_RANK() OVER (
+            ORDER BY state_total_revenue DESC
+        ) AS state_rank
+    FROM state_revenue
+),
+state_category_revenue AS (
+    SELECT
+        ship_state,
+        category,
+        SUM(amount) AS category_revenue
+    FROM amazon_sales.amz_report
+    GROUP BY
+        ship_state,
+        category
+),
+ranked_categories AS (
+    SELECT
+        ship_state,
+        category,
+        category_revenue,
+        DENSE_RANK() OVER (
+            PARTITION BY ship_state
+            ORDER BY category_revenue DESC
+        ) AS category_rank
+    FROM state_category_revenue
+)
+
+SELECT
+    s.ship_state,
+    ROUND(s.state_total_revenue, 2) AS state_total_revenue,
+    s.state_rank,
+    c.category AS leading_category,
+    ROUND(c.category_revenue, 2) AS category_revenue
+FROM ranked_states AS s
+JOIN ranked_categories AS c
+    ON s.ship_state = c.ship_state
+WHERE s.state_rank <= 5
+  AND c.category_rank = 1
+ORDER BY s.state_rank;
+
+# 4. RETURN RATES IN THE TOP-FIVE REVENUE STATES
+WITH state_revenue AS (
+    SELECT
+        ship_state,
+        SUM(amount) AS total_revenue
+    FROM amazon_sales.amz_report
+    WHERE ship_state IS NOT NULL
+      AND ship_state <> 'Unknown'
+    GROUP BY ship_state
+),
+ranked_states AS (
+    SELECT
+        ship_state,
+        total_revenue,
+        DENSE_RANK() OVER (
+            ORDER BY total_revenue DESC
+        ) AS revenue_rank
+    FROM state_revenue
+)
+
+SELECT
+    r.ship_state,
+    ROUND(r.total_revenue, 2) AS total_revenue,
+    r.revenue_rank,
+
+    COUNT(DISTINCT a.order_id) AS total_orders,
+
+    COUNT(
+        DISTINCT CASE
+            WHEN a.status IN (
+                'Shipped - Returned to Seller',
+                'Shipped - Returning to Seller'
+            )
+            THEN a.order_id
+        END
+    ) AS returned_orders,
+
+    ROUND(
+        COUNT(
+            DISTINCT CASE
+                WHEN a.status IN (
+                    'Shipped - Returned to Seller',
+                    'Shipped - Returning to Seller'
+                )
+                THEN a.order_id
+            END
+        ) * 100.0
+        / NULLIF(COUNT(DISTINCT a.order_id), 0),
+        2
+    ) AS return_rate_pct
+
+FROM amazon_sales.amz_report AS a
+JOIN ranked_states AS r
+    ON a.ship_state = r.ship_state
+
+WHERE r.revenue_rank <= 5
+
+GROUP BY
+    r.ship_state,
+    r.total_revenue,
+    r.revenue_rank
+
+ORDER BY r.revenue_rank;
+
+# 5. STATES WITH THE HIGHEST AVERAGE ORDER VALUE
+WITH state_aov AS (
+    SELECT
+        ship_state,
+        COUNT(DISTINCT order_id) AS total_orders,
+        SUM(amount) AS total_revenue,
+        SUM(amount) / NULLIF(
+            COUNT(DISTINCT order_id),
+            0
+        ) AS average_order_value
+    FROM amazon_sales.amz_report
+    WHERE ship_state IS NOT NULL
+      AND ship_state <> 'Unknown'
+    GROUP BY ship_state
+    HAVING COUNT(DISTINCT order_id) >= 10
+),
+ranked_states AS (
+    SELECT
+        ship_state,
+        total_orders,
+        total_revenue,
+        average_order_value,
+        DENSE_RANK() OVER (
+            ORDER BY average_order_value DESC
+        ) AS aov_rank
+    FROM state_aov
+)
+
+SELECT
+    ship_state,
+    total_orders,
+    ROUND(total_revenue, 2) AS total_revenue,
+    ROUND(average_order_value, 2) AS average_order_value,
+    aov_rank
+FROM ranked_states
+WHERE aov_rank <= 5
+ORDER BY aov_rank, ship_state;
+
+# 6. DAILY AVERAGE ORDER VALUE
+WITH order_totals AS (
+    SELECT
+        order_date,
+        order_id,
+        SUM(amount) AS order_value
+    FROM amazon_sales.amz_report
+    GROUP BY
+        order_date,
+        order_id
+)
+
+SELECT
+    order_date,
+    COUNT(*) AS total_orders,
+    ROUND(SUM(order_value), 2) AS daily_revenue,
+    ROUND(AVG(order_value), 2) AS daily_aov
+FROM order_totals
+GROUP BY order_date
+ORDER BY order_date;
+
+#7. SEVEN-DAY ROLLING AOV
+WITH order_totals AS (
+    SELECT
+        order_date,
+        order_id,
+        SUM(amount) AS order_value
+    FROM amazon_sales.amz_report
+    GROUP BY
+        order_date,
+        order_id
+),
+daily_orders AS (
+    SELECT
+        order_date,
+        COUNT(*) AS daily_orders,
+        SUM(order_value) AS daily_revenue,
+        AVG(order_value) AS daily_aov
+    FROM order_totals
+    GROUP BY order_date
+)
+
+SELECT
+    order_date,
+    daily_orders,
+    ROUND(daily_revenue, 2) AS daily_revenue,
+    ROUND(daily_aov, 2) AS daily_aov,
+
+    ROUND(
+        AVG(daily_aov) OVER (
+            ORDER BY order_date
+            ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+        ),
+        2
+    ) AS rolling_7day_aov
+
+FROM daily_orders
+ORDER BY order_date;
+
+# 8. SEVEN-DAY ROLLING AOV FOR THE LAST 90 DAYS
+WITH order_totals AS (
+    SELECT
+        order_date,
+        order_id,
+        SUM(amount) AS order_value
+    FROM amazon_sales.amz_report
+    WHERE order_date >= (
+        SELECT DATE_SUB(MAX(order_date), INTERVAL 89 DAY)
+        FROM amazon_sales.amz_report
+    )
+    GROUP BY
+        order_date,
+        order_id
+),
+daily_orders AS (
+    SELECT
+        order_date,
+        COUNT(*) AS daily_orders,
+        SUM(order_value) AS daily_revenue,
+        AVG(order_value) AS daily_aov
+    FROM order_totals
+    GROUP BY order_date
+)
+
+SELECT
+    order_date,
+    daily_orders,
+    ROUND(daily_revenue, 2) AS daily_revenue,
+    ROUND(daily_aov, 2) AS daily_aov,
+
+    ROUND(
+        AVG(daily_aov) OVER (
+            ORDER BY order_date
+            ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+        ),
+        2
+    ) AS rolling_7day_aov
+
+FROM daily_orders
+ORDER BY order_date;
+
+#9. CATEGORY-LEVEL SEVEN-DAY ROLLING AOV
+WITH order_category_totals AS (
+    SELECT
+        order_date,
+        order_id,
+        category,
+        SUM(amount) AS category_order_value
+    FROM amazon_sales.amz_report
+    GROUP BY
+        order_date,
+        order_id,
+        category
+),
+daily_category_aov AS (
+    SELECT
+        order_date,
+        category,
+        AVG(category_order_value) AS daily_category_aov
+    FROM order_category_totals
+    GROUP BY
+        order_date,
+        category
+)
+
+SELECT
+    order_date,
+    category,
+    ROUND(daily_category_aov, 2) AS daily_category_aov,
+
+    ROUND(
+        AVG(daily_category_aov) OVER (
+            PARTITION BY category
+            ORDER BY order_date
+            ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+        ),
+        2
+    ) AS rolling_7day_category_aov
+
+FROM daily_category_aov
+ORDER BY
+    category,
+    order_date;
+
+#10. CATEGORIES WITH THE HIGHEST ROLLING AOV
+WITH order_category_totals AS (
+    SELECT
+        order_date,
+        order_id,
+        category,
+        SUM(amount) AS category_order_value
+    FROM amazon_sales.amz_report
+    GROUP BY
+        order_date,
+        order_id,
+        category
+),
+daily_category_aov AS (
+    SELECT
+        order_date,
+        category,
+        AVG(category_order_value) AS daily_category_aov
+    FROM order_category_totals
+    GROUP BY
+        order_date,
+        category
+),
+rolling_category_aov AS (
+    SELECT
+        order_date,
+        category,
+        AVG(daily_category_aov) OVER (
+            PARTITION BY category
+            ORDER BY order_date
+            ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+        ) AS rolling_7day_aov
+    FROM daily_category_aov
+)
+
+SELECT
+    category,
+    ROUND(AVG(rolling_7day_aov), 2) AS average_rolling_aov
+FROM rolling_category_aov
+GROUP BY category
+ORDER BY average_rolling_aov DESC;
+
+#11. OVERALL CATEGORY PERFORMANCE
+WITH order_category_totals AS (
+    SELECT
+        order_id,
+        category,
+        SUM(amount) AS category_order_value
+    FROM amazon_sales.amz_report
+    GROUP BY
+        order_id,
+        category
+)
+
+SELECT
+    category,
+    COUNT(DISTINCT order_id) AS total_orders,
+    ROUND(SUM(category_order_value), 2) AS total_revenue,
+    ROUND(AVG(category_order_value), 2) AS average_order_value
+FROM order_category_totals
+GROUP BY category
+ORDER BY total_revenue DESC;
+
+#12. PROMOTION PERFORMANCE BY CATEGORY
+WITH order_promotion_totals AS (
+    SELECT
+        order_id,
+        category,
+
+        CASE
+            WHEN promotion_used = 'No'
+                THEN 'No Promotion'
+            ELSE 'Promotion'
+        END AS promotion_status,
+
+        SUM(amount) AS order_value
+
+    FROM amazon_sales.amz_report
+
+    GROUP BY
+        order_id,
+        category,
+        CASE
+            WHEN promotion_used = 'No'
+                THEN 'No Promotion'
+            ELSE 'Promotion'
+        END
+)
+
+SELECT
+    category,
+    promotion_status,
+    COUNT(DISTINCT order_id) AS total_orders,
+    ROUND(SUM(order_value), 2) AS total_revenue,
+    ROUND(AVG(order_value), 2) AS average_order_value
+FROM order_promotion_totals
+GROUP BY
+    category,
+    promotion_status
+ORDER BY
+    category,
+    average_order_value DESC;
+
+#13. PROMOTIONAL AOV LIFT BY CATEGORY
+WITH order_promotion_totals AS (
+    SELECT
+        order_id,
+        category,
+
+        CASE
+            WHEN promotion_used = 'No'
+                THEN 'No Promotion'
+            ELSE 'Promotion'
+        END AS promotion_status,
+
+        SUM(amount) AS order_value
+
+    FROM amazon_sales.amz_report
+
+    GROUP BY
+        order_id,
+        category,
+        CASE
+            WHEN promotion_used = 'No'
+                THEN 'No Promotion'
+            ELSE 'Promotion'
+        END
+),
+promotion_aov AS (
+    SELECT
+        category,
+
+        AVG(
+            CASE
+                WHEN promotion_status = 'Promotion'
+                THEN order_value
+            END
+        ) AS promotion_aov,
+
+        AVG(
+            CASE
+                WHEN promotion_status = 'No Promotion'
+                THEN order_value
+            END
+        ) AS no_promotion_aov
+
+    FROM order_promotion_totals
+    GROUP BY category
+)
+
+SELECT
+    category,
+    ROUND(promotion_aov, 2) AS promotion_aov,
+    ROUND(no_promotion_aov, 2) AS no_promotion_aov,
+
+    ROUND(
+        promotion_aov - no_promotion_aov,
+        2
+    ) AS aov_difference,
+
+    ROUND(
+        (
+            promotion_aov - no_promotion_aov
+        ) * 100.0
+        / NULLIF(no_promotion_aov, 0),
+        2
+    ) AS promotional_aov_lift_pct
+
+FROM promotion_aov
+ORDER BY promotional_aov_lift_pct DESC;
